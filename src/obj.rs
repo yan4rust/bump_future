@@ -11,29 +11,32 @@
 // limitations under the License.
 
 use bumpalo::Bump;
-use std::{alloc::Layout, any::TypeId, num::NonZeroUsize, ptr::NonNull, sync::Arc};
+use std::{
+    alloc::Layout, any::TypeId, cell::Cell, marker::PhantomData, num::NonZeroUsize, ptr::NonNull,
+    sync::Arc,
+};
 
 use sptr::Strict;
 
-use crate::{bump::BumpRef, util::addr_to_ptr};
-
-pub(crate) unsafe fn drop_by_addr<T>(addr: NonZeroUsize) {
-    let ptr: NonNull<T> = NonNull::dangling();
-    let ptr = ptr.as_ptr().with_addr(addr.get());
-    std::ptr::drop_in_place(ptr);
-}
+use crate::{
+    bump::BumpRef,
+    util::{addr_to_ptr, drop_by_addr},
+};
 
 /// a smart pointer point to object stored in Bump
-/// the safety depends on Bump not reset or droped while this object is still live
+/// it use TypeId to check when downcast in runtime, so only 'static type can be used as input
 pub(crate) struct Inner {
     addr: Option<NonZeroUsize>,
     type_id: TypeId,
     drop_fn: unsafe fn(NonZeroUsize),
+    // Self only require input type is Send, we must ensure Self is !sync,
+    _p: PhantomData<Cell<()>>,
 }
 impl Inner {
+    /// the safety depends on Bump not reset or droped while this object is still live
     pub unsafe fn new<T>(bump: &Bump, inner: T) -> Self
     where
-        T: 'static,
+        T: Send + 'static,
     {
         let layout = Layout::new::<T>();
         let ptr = bump.alloc_layout(layout.clone());
@@ -47,6 +50,7 @@ impl Inner {
             addr: Some(NonZeroUsize::new(addr).expect("addr shoud not be zero")),
             type_id: TypeId::of::<T>(),
             drop_fn: drop_by_addr::<T>,
+            _p: PhantomData::default(),
         };
     }
 
@@ -135,13 +139,28 @@ impl BumpAny for BumpObject {
     where
         T: 'static,
     {
-        unsafe {self.inner.downcast_ref::<T>()}
+        unsafe { self.inner.downcast_ref::<T>() }
     }
 
     fn downcast_mut<T>(&mut self) -> Option<&mut T>
     where
         T: 'static,
     {
-        unsafe {self.inner.downcast_mut::<T>()}
+        unsafe { self.inner.downcast_mut::<T>() }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::util::{check_send, check_sync};
+
+    use super::Inner;
+
+    #[test]
+    fn test_inner_bounds() {
+        // ensure Inner is Send
+        check_send::<Inner>();
+        // ensure Inner is !Sync
+        // check_sync::<Inner>();
     }
 }

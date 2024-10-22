@@ -28,6 +28,14 @@ impl BumpPool {
             bump_capacity,
         };
     }
+    /// pool cappacity
+    pub fn capacity(&self)->usize {
+        return self.pool.capacity();
+    }
+    /// how many Bump instance in pool
+    pub fn len(&self)->usize {
+        return self.pool.len();
+    }
 }
 impl BumpPool {
     /// take a Bump instance from pool,and return RecycleableBump
