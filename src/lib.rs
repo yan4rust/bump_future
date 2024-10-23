@@ -18,12 +18,19 @@ pub mod future;
 pub mod obj;
 pub(crate) mod util;
 
+pub mod tokio {
+    pub use tokio::*;
+}
+pub mod once_cell {
+    pub use once_cell::*;
+}
+
 // test mod for user face api, it should use macro to generate the mod
 pub(crate) mod api {
     use std::future::Future;
 
-    use once_cell::sync::{Lazy, OnceCell};
-    use tokio::{
+    use crate::once_cell::sync::{Lazy, OnceCell};
+    use crate::tokio::{
         runtime::Handle,
         task::{futures::TaskLocalFuture, JoinHandle},
         task_local,
@@ -190,8 +197,8 @@ mod test {
             let mut x = Vec::with_capacity(16);
             let mut input = &b"12345"[..];
             let count = copy(&mut input, &mut x).await.unwrap();
-            assert_eq!(count,5);
-            assert_eq!(&x[0..5],&b"12345"[0..5]);
+            assert_eq!(count, 5);
+            assert_eq!(&x[0..5], &b"12345"[0..5]);
             123 as u32
         };
         // above Future is !Unpin, following code will not compile
@@ -207,8 +214,8 @@ mod test {
             let mut x = Vec::with_capacity(16);
             let mut input = &b"12345"[..];
             let count = copy(&mut input, &mut x).await.unwrap();
-            assert_eq!(count,5);
-            assert_eq!(&x[0..5],&b"12345"[0..5]);
+            assert_eq!(count, 5);
+            assert_eq!(&x[0..5], &b"12345"[0..5]);
             123 as u32
         };
         // above Future is !Unpin, following code will not compile
@@ -225,6 +232,4 @@ mod test {
         let rslt = fut.await;
         assert_eq!(rslt, 123);
     }
-
-    
 }

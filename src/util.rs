@@ -9,6 +9,7 @@ use std::{
 
 use crate::obj::{BumpAny, BumpObject};
 
+#[inline]
 pub(crate) unsafe fn drop_by_addr<T>(addr: NonZeroUsize) {
     let ptr: NonNull<T> = NonNull::dangling();
     let ptr = ptr.as_ptr().with_addr(addr.get());
@@ -29,6 +30,7 @@ pub(crate) unsafe fn addr_to_ptr<T>(addr: NonZeroUsize) -> NonNull<T> {
     NonNull::<T>::new(ptr).expect("ptr should not be null")
 }
 
+#[inline]
 pub(crate) fn poll_future<B, F>(this: Pin<&mut B>, cx: &mut Context<'_>) -> Poll<F::Output>
 where
     B: AsMut<BumpObject>,

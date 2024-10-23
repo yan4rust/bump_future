@@ -6,60 +6,14 @@ use tokio::{runtime::Handle, sync::mpsc};
 
 use crate::{
     alloc::BumpAlloc,
-    obj::{BumpObject, Inner},
+    obj::{BumpObject, UnsafeObject},
 };
 
 pub mod pool;
 
-/// alloc object in bump within async task
-/// when dropped ,it will spawn a task to wait all BumpRef dropped.
-/// when all BumpRef dropped,it will drop RecycleableBump,and the Bump will be
-/// reset and push back to pool
-pub struct TaskBumpAlloc {
-    handle: Handle,
-    bump: Option<RecycleableBump>,
-    ref_mgr: Option<BumpRefMgr>,
-}
 
-impl TaskBumpAlloc {
-    pub fn new(handle: Handle, bump: RecycleableBump) -> Self {
-        return Self {
-            handle,
-            bump: Some(bump),
-            ref_mgr: Some(BumpRefMgr::new()),
-        };
-    }
-    #[inline]
-    fn bump(&self) -> &Bump {
-        self.bump.as_ref().unwrap()
-    }
-    #[inline]
-    fn new_bump_ref(&self) -> BumpRef {
-        self.ref_mgr.as_ref().unwrap().new_ref()
-    }
-}
-impl BumpAlloc for TaskBumpAlloc {
-    fn alloc<T>(&self, val: T) -> crate::obj::BumpObject
-    where
-        T: Send + 'static,
-    {
-        let inner = unsafe { Inner::new(self.bump(), val) };
-        let bump_ref = self.new_bump_ref();
-        return BumpObject::new(inner, bump_ref);
-    }
-}
-impl Drop for TaskBumpAlloc {
-    fn drop(&mut self) {
-        let bump = self.bump.take().expect("should not be None");
-        let ref_mgr = self.ref_mgr.take().expect("should not be None");
-        self.handle.spawn(async move {
-            ref_mgr.wait_no_ref().await;
-            drop(bump);
-        });
-    }
-}
 
-/// bump reference manager
+/// Bump usage reference manager
 pub struct BumpRefMgr {
     rx: mpsc::Receiver<()>,
     tx: mpsc::Sender<()>,
@@ -82,7 +36,7 @@ impl BumpRefMgr {
 }
 
 /// Bump usage reference object
-/// any object stored in Bump must hold a BumpRef to prevent the Bump to be released
+/// any object stored in Bump must hold a BumpRef to prevent the Bump from released
 pub struct BumpRef {
     tx: mpsc::Sender<()>,
 }

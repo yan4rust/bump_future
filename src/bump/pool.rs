@@ -5,7 +5,7 @@ use crossbeam_queue::ArrayQueue;
 
 use super::RecycleableBump;
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct PoolConfig {
     pub pool_capacity: usize,
     pub bump_capacity: usize,
@@ -29,11 +29,11 @@ impl BumpPool {
         };
     }
     /// pool cappacity
-    pub fn capacity(&self)->usize {
+    pub fn capacity(&self) -> usize {
         return self.pool.capacity();
     }
     /// how many Bump instance in pool
-    pub fn len(&self)->usize {
+    pub fn len(&self) -> usize {
         return self.pool.len();
     }
 }

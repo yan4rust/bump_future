@@ -25,14 +25,14 @@ use crate::{
 
 /// a smart pointer point to object stored in Bump
 /// it use TypeId to check when downcast in runtime, so only 'static type can be used as input
-pub(crate) struct Inner {
+pub struct UnsafeObject {
     addr: Option<NonZeroUsize>,
     type_id: TypeId,
     drop_fn: unsafe fn(NonZeroUsize),
     // Self only require input type is Send, we must ensure Self is !sync,
     _p: PhantomData<Cell<()>>,
 }
-impl Inner {
+impl UnsafeObject {
     /// the safety depends on Bump not reset or droped while this object is still live
     pub unsafe fn new<T>(bump: &Bump, inner: T) -> Self
     where
@@ -65,6 +65,7 @@ impl Inner {
     }
     /// if this object is of type T, will return the reference of T
     /// otherwise will return None
+    #[inline]
     pub unsafe fn downcast_ref<T>(&self) -> Option<&T>
     where
         T: 'static,
@@ -80,6 +81,7 @@ impl Inner {
     }
     /// if this object is of type T, will return the mutable reference of T
     /// otherwise will return None
+    #[inline]
     pub unsafe fn downcast_mut<T>(&mut self) -> Option<&mut T>
     where
         T: 'static,
@@ -94,7 +96,7 @@ impl Inner {
         }
     }
 }
-impl Drop for Inner {
+impl Drop for UnsafeObject {
     fn drop(&mut self) {
         if let Some(addr) = self.addr.take() {
             unsafe { (self.drop_fn)(addr) };
@@ -104,11 +106,11 @@ impl Drop for Inner {
 
 /// a object stored in Bump
 pub struct BumpObject {
-    inner: Inner,
+    inner: UnsafeObject,
     bump_ref: BumpRef,
 }
 impl BumpObject {
-    pub fn new(inner: Inner, bump_ref: BumpRef) -> Self {
+    pub fn new(inner: UnsafeObject, bump_ref: BumpRef) -> Self {
         return Self { inner, bump_ref };
     }
 }
@@ -154,13 +156,13 @@ impl BumpAny for BumpObject {
 mod test {
     use crate::util::{check_send, check_sync};
 
-    use super::Inner;
+    use super::UnsafeObject;
 
     #[test]
     fn test_inner_bounds() {
-        // ensure Inner is Send
-        check_send::<Inner>();
-        // ensure Inner is !Sync
-        // check_sync::<Inner>();
+        // ensure UnsafeObject is Send
+        check_send::<UnsafeObject>();
+        // ensure UnsafeObject is !Sync
+        // check_sync::<UnsafeObject>();
     }
 }
