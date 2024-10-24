@@ -42,7 +42,7 @@ pub struct BumpRef {
 }
 
 /// when dropped,Bump instance will be reset and send back to pool
-pub(crate) struct RecycleableBump {
+pub struct RecycleableBump {
     bump: Option<Bump>,
     pool: Weak<ArrayQueue<Bump>>,
 }

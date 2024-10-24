@@ -25,91 +25,95 @@ pub mod once_cell {
     pub use once_cell::*;
 }
 
-// test mod for user face api, it should use macro to generate the mod
-pub(crate) mod api {
-    use std::future::Future;
+/// generate a mod to use BumpFuture
+#[macro_export]
+macro_rules! alloc_mod {
+    ( $vis:vis $name:ident ) => {
+        $vis mod $name {
+            use std::future::Future;
 
-    use crate::once_cell::sync::{Lazy, OnceCell};
-    use crate::tokio::{
-        runtime::Handle,
-        task::{futures::TaskLocalFuture, JoinHandle},
-        task_local,
-    };
+            use $crate::alloc::TaskBumpAlloc;
+            use $crate::once_cell::sync::{Lazy, OnceCell};
+            use $crate::tokio::{
+                runtime::Handle,
+                task::{futures::TaskLocalFuture, JoinHandle},
+                task_local,
+            };
 
-    use crate::{
-        alloc::BumpAlloc,
-        bump::{
-            pool::{BumpPool, PoolConfig},
-            TaskBumpAlloc,
-        },
-    };
-
-    static POOL_CONFIG: OnceCell<PoolConfig> = OnceCell::new();
-    static POOL: Lazy<BumpPool> = Lazy::new(|| {
-        let conf = POOL_CONFIG.get().expect("should init first");
-        BumpPool::new(conf.pool_capacity, conf.bump_capacity)
-    });
-    task_local! {
-        pub static TASK_ALLOC: TaskBumpAlloc;
-    }
-
-    /// init with config
-    pub fn init(config: PoolConfig) -> Result<(), PoolConfig> {
-        return POOL_CONFIG.set(config);
-    }
-    /// access the TaskBumpAlloc associate with the current task
-    /// must call within async context otherwise will panic
-    /// if no TaskBumpAlloc with current task,it will take one from pool
-    pub fn with_task_or_new<F, R>(func: F) -> R
-    where
-        F: FnOnce(&TaskBumpAlloc) -> R,
-    {
-        let ret = TASK_ALLOC.try_with(|alloc| ());
-        match ret {
-            Ok(_) => {
-                return TASK_ALLOC.try_with(func).expect("should not be Err");
+            use $crate::{
+                alloc::BumpAlloc,
+                bump::{
+                    pool::{BumpPool, PoolConfig},
+                },
+            };
+            static POOL_CONFIG: OnceCell<PoolConfig> = OnceCell::new();
+            static POOL: Lazy<BumpPool> = Lazy::new(|| {
+                let conf = POOL_CONFIG.get().expect("should init first");
+                BumpPool::new(conf.pool_capacity, conf.bump_capacity)
+            });
+            task_local! {
+                pub static TASK_ALLOC: TaskBumpAlloc;
             }
-            Err(_err) => {
+
+            /// init with config
+            pub fn init(config: PoolConfig) -> Result<(), PoolConfig> {
+                return POOL_CONFIG.set(config);
+            }
+            /// access the TaskBumpAlloc associate with the current task
+            /// must call within async context otherwise will panic
+            /// if no TaskBumpAlloc with current task,it will take one from pool
+            pub fn with_task_or_new<F, R>(func: F) -> R
+            where
+                F: FnOnce(&TaskBumpAlloc) -> R,
+            {
+                let ret = TASK_ALLOC.try_with(|alloc| ());
+                match ret {
+                    Ok(_) => {
+                        return TASK_ALLOC.try_with(func).expect("should not be Err");
+                    }
+                    Err(_err) => {
+                        let bump = POOL.take();
+                        let alloc = TaskBumpAlloc::new(Handle::current(), bump);
+                        return func(&alloc);
+                    }
+                }
+            }
+            /// return pool reference
+            pub fn pool() -> &'static BumpPool {
+                return &POOL;
+            }
+            /// access the TaskBumpAlloc associate with the current task
+            /// must call within async context otherwise will panic
+            /// if no TaskBumpAlloc with current task, it will return None
+            pub fn with_task<F, R>(func: F) -> Option<R>
+            where
+                F: FnOnce(&TaskBumpAlloc) -> R,
+            {
+                let ret = TASK_ALLOC.try_with(|alloc| ());
+                match ret {
+                    Ok(_) => {
+                        let ret = TASK_ALLOC.try_with(func).expect("should not be Err");
+                        return Some(ret);
+                    }
+                    Err(_err) => {
+                        return None;
+                    }
+                }
+            }
+
+            /// set a TaskBumpAlloc with the Future input
+            /// when the Future polled , it can access the TaskBumpAlloc
+            pub fn set_bump<F>(fut: F) -> TaskLocalFuture<TaskBumpAlloc, F>
+            where
+                F: Future,
+            {
                 let bump = POOL.take();
                 let alloc = TaskBumpAlloc::new(Handle::current(), bump);
-                return func(&alloc);
+                let fut = TASK_ALLOC.scope(alloc, fut);
+                return fut;
             }
-        }
-    }
-    /// return pool reference
-    pub fn pool() -> &'static BumpPool {
-        return &POOL;
-    }
-    /// access the TaskBumpAlloc associate with the current task
-    /// must call within async context otherwise will panic
-    /// if no TaskBumpAlloc with current task, it will return None
-    pub fn with_task<F, R>(func: F) -> Option<R>
-    where
-        F: FnOnce(&TaskBumpAlloc) -> R,
-    {
-        let ret = TASK_ALLOC.try_with(|alloc| ());
-        match ret {
-            Ok(_) => {
-                let ret = TASK_ALLOC.try_with(func).expect("should not be Err");
-                return Some(ret);
-            }
-            Err(_err) => {
-                return None;
-            }
-        }
-    }
-
-    /// set a TaskBumpAlloc with the Future input
-    /// when the Future polled , it can access the TaskBumpAlloc
-    pub fn set_bump<F>(fut: F) -> TaskLocalFuture<TaskBumpAlloc, F>
-    where
-        F: Future,
-    {
-        let bump = POOL.take();
-        let alloc = TaskBumpAlloc::new(Handle::current(), bump);
-        let fut = TASK_ALLOC.scope(alloc, fut);
-        return fut;
-    }
+                }
+            };
 }
 
 #[cfg(test)]
@@ -121,7 +125,11 @@ mod test {
 
     use crate::future::BumpFutureExt;
     use crate::util::check_unpin_ref;
-    use crate::{api, bump::pool::PoolConfig};
+    use crate::{bump::pool::PoolConfig};
+    use crate::alloc_mod;
+
+    // generate a mod of name "bump_alloc"
+    alloc_mod!(bump_alloc);
 
     #[tokio::test]
     async fn test_bump_future() {
@@ -129,9 +137,9 @@ mod test {
             pool_capacity: 8,
             bump_capacity: 1024,
         };
-        let _ = api::init(conf);
+        let _ = bump_alloc::init(conf);
         //after init ,pool len should be 8
-        assert_eq!(api::pool().len(), 8);
+        assert_eq!(bump_alloc::pool().len(), 8);
 
         test_bump_future_simple().await;
         test_set_bump_multi_times().await;
@@ -141,8 +149,8 @@ mod test {
 
     async fn test_bump_future_simple() {
         {
-            let fut = api::set_bump(async move {
-                let fut = api::with_task(|alloc| {
+            let fut = bump_alloc::set_bump(async move {
+                let fut = bump_alloc::with_task(|alloc| {
                     let fut = async move {
                         tokio::time::sleep(Duration::from_millis(100)).await;
                         32 as u32
@@ -154,18 +162,18 @@ mod test {
                 rslt
             });
             // after first use , pool len should be 7
-            assert_eq!(api::pool().len(), 7);
+            assert_eq!(bump_alloc::pool().len(), 7);
             let rslt = fut.await;
             assert_eq!(rslt, 32);
         }
         // wait Bump recycled, pool len should be 8
         tokio::time::sleep(Duration::from_millis(100)).await;
-        assert_eq!(api::pool().len(), 8);
+        assert_eq!(bump_alloc::pool().len(), 8);
     }
     async fn test_set_bump_multi_times() {
         {
-            let fut = api::set_bump(async move {
-                let fut = api::with_task(|alloc| {
+            let fut = bump_alloc::set_bump(async move {
+                let fut = bump_alloc::with_task(|alloc| {
                     let fut = async move {
                         tokio::time::sleep(Duration::from_millis(100)).await;
                         32 as u32
@@ -177,18 +185,18 @@ mod test {
                 rslt
             });
             // after first use , pool len should be 7
-            assert_eq!(api::pool().len(), 7);
+            assert_eq!(bump_alloc::pool().len(), 7);
 
             // set_bump second times,pool len should be 6
-            let fut = api::set_bump(fut);
-            assert_eq!(api::pool().len(), 6);
+            let fut = bump_alloc::set_bump(fut);
+            assert_eq!(bump_alloc::pool().len(), 6);
 
             let rslt = fut.await;
             assert_eq!(rslt, 32);
         }
         // wait Bump recycled, pool len should be 8
         tokio::time::sleep(Duration::from_millis(100)).await;
-        assert_eq!(api::pool().len(), 8);
+        assert_eq!(bump_alloc::pool().len(), 8);
     }
 
     // test future which is !Unpin with Box
@@ -221,8 +229,8 @@ mod test {
         // above Future is !Unpin, following code will not compile
         // check_unpin(&fut1);
 
-        let fut = api::set_bump(async move {
-            let fut = api::with_task(|alloc| {
+        let fut = bump_alloc::set_bump(async move {
+            let fut = bump_alloc::with_task(|alloc| {
                 let fut = fut1.bumped(alloc);
                 fut
             });
