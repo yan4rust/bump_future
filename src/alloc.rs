@@ -26,11 +26,11 @@ pub struct TaskBumpAlloc {
 
 impl TaskBumpAlloc {
     pub fn new(handle: Handle, bump: RecycleableBump) -> Self {
-        return Self {
+        Self {
             handle,
             bump: Some(bump),
             ref_mgr: Some(BumpRefMgr::new()),
-        };
+        }
     }
     #[inline]
     fn bump(&self) -> &Bump {
@@ -48,7 +48,7 @@ impl BumpAlloc for TaskBumpAlloc {
     {
         let inner = unsafe { UnsafeObject::new(self.bump(), val) };
         let bump_ref = self.new_bump_ref();
-        return BumpObject::new(inner, bump_ref);
+        BumpObject::new(inner, bump_ref)
     }
 }
 impl Drop for TaskBumpAlloc {

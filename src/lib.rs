@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// #![allow(warnings)]
+#![allow(dead_code)]
 #![allow(unstable_name_collisions)]
 pub mod alloc;
 pub mod bump;
@@ -37,16 +37,13 @@ macro_rules! alloc_mod {
             use $crate::once_cell::sync::{Lazy, OnceCell};
             use $crate::tokio::{
                 runtime::Handle,
-                task::{futures::TaskLocalFuture, JoinHandle},
+                task::futures::TaskLocalFuture,
                 task_local,
             };
 
-            use $crate::{
-                alloc::BumpAlloc,
-                bump::{
+            use $crate::bump::{
                     pool::{BumpPool, PoolConfig},
-                },
-            };
+                };
             static POOL_CONFIG: OnceCell<PoolConfig> = OnceCell::new();
             static POOL: Lazy<BumpPool> = Lazy::new(|| {
                 let conf = POOL_CONFIG.get();
@@ -69,7 +66,7 @@ macro_rules! alloc_mod {
             where
                 F: FnOnce(&TaskBumpAlloc) -> R,
             {
-                let ret = TASK_ALLOC.try_with(|alloc| ());
+                let ret = TASK_ALLOC.try_with(|_alloc| ());
                 match ret {
                     Ok(_) => {
                         return TASK_ALLOC.try_with(func).expect("should not be Err");
@@ -92,7 +89,7 @@ macro_rules! alloc_mod {
             where
                 F: FnOnce(&TaskBumpAlloc) -> R,
             {
-                let ret = TASK_ALLOC.try_with(|alloc| ());
+                let ret = TASK_ALLOC.try_with(|_alloc| ());
                 match ret {
                     Ok(_) => {
                         let ret = TASK_ALLOC.try_with(func).expect("should not be Err");
@@ -121,7 +118,7 @@ macro_rules! alloc_mod {
 
 #[cfg(test)]
 mod test {
-    use std::future::Future;
+    
     use std::time::Duration;
 
     use tokio::io::copy;
@@ -129,19 +126,19 @@ mod test {
     use crate::alloc_mod;
     use crate::bump::pool::PoolConfig;
     use crate::future::BumpFutureExt;
-    use crate::util::check_unpin_ref;
+    
 
     // generate a mod of name "bump_alloc"
     alloc_mod!(bump_alloc);
 
     #[tokio::test]
     async fn test_bump_future() {
-        let x = std::f64::consts::PI;
         let conf = PoolConfig {
             pool_capacity: 8,
             bump_capacity: 1024,
         };
-        // let _ = bump_alloc::init(conf);
+        let _ = bump_alloc::init(conf);
+
         //after init ,pool len should be 8
         assert_eq!(bump_alloc::pool().len(), 8);
 
@@ -155,15 +152,15 @@ mod test {
         {
             let fut = bump_alloc::set_bump(async move {
                 let fut = bump_alloc::with_task(|alloc| {
-                    let fut = async move {
+                    
+                    async move {
                         tokio::time::sleep(Duration::from_millis(100)).await;
-                        32 as u32
+                        32_u32
                     }
-                    .bumped(alloc);
-                    fut
+                    .bumped(alloc)
                 });
-                let rslt = fut.unwrap().await;
-                rslt
+                
+                fut.unwrap().await
             });
             // after first use , pool len should be 7
             assert_eq!(bump_alloc::pool().len(), 7);
@@ -178,15 +175,15 @@ mod test {
         {
             let fut = bump_alloc::set_bump(async move {
                 let fut = bump_alloc::with_task(|alloc| {
-                    let fut = async move {
+                    
+                    async move {
                         tokio::time::sleep(Duration::from_millis(100)).await;
-                        32 as u32
+                        32_u32
                     }
-                    .bumped(alloc);
-                    fut
+                    .bumped(alloc)
                 });
-                let rslt = fut.unwrap().await;
-                rslt
+                
+                fut.unwrap().await
             });
             // after first use , pool len should be 7
             assert_eq!(bump_alloc::pool().len(), 7);
@@ -211,7 +208,7 @@ mod test {
             let count = copy(&mut input, &mut x).await.unwrap();
             assert_eq!(count, 5);
             assert_eq!(&x[0..5], &b"12345"[0..5]);
-            123 as u32
+            123_u32
         };
         // above Future is !Unpin, following code will not compile
         // check_unpin(&fut1);
@@ -228,18 +225,18 @@ mod test {
             let count = copy(&mut input, &mut x).await.unwrap();
             assert_eq!(count, 5);
             assert_eq!(&x[0..5], &b"12345"[0..5]);
-            123 as u32
+            123_u32
         };
         // above Future is !Unpin, following code will not compile
         // check_unpin(&fut1);
 
         let fut = bump_alloc::set_bump(async move {
             let fut = bump_alloc::with_task(|alloc| {
-                let fut = fut1.bumped(alloc);
-                fut
+                
+                fut1.bumped(alloc)
             });
-            let rslt = fut.unwrap().await;
-            rslt
+            
+            fut.unwrap().await
         });
         let rslt = fut.await;
         assert_eq!(rslt, 123);

@@ -13,7 +13,6 @@
 use bumpalo::Bump;
 use std::{
     alloc::Layout, any::TypeId, cell::Cell, marker::PhantomData, num::NonZeroUsize, ptr::NonNull,
-    sync::Arc,
 };
 
 use sptr::Strict;
@@ -39,19 +38,19 @@ impl UnsafeObject {
         T: Send + 'static,
     {
         let layout = Layout::new::<T>();
-        let ptr = bump.alloc_layout(layout.clone());
+        let ptr = bump.alloc_layout(layout);
         let ptr = unsafe {
             let ptr = ptr.cast::<T>();
             ptr.as_ptr().write(inner);
             ptr
         };
         let addr = ptr.as_ptr().addr();
-        return Self {
+        Self {
             addr: Some(NonZeroUsize::new(addr).expect("addr shoud not be zero")),
             type_id: TypeId::of::<T>(),
             drop_fn: drop_by_addr::<T>,
-            _p: PhantomData::default(),
-        };
+            _p: PhantomData,
+        }
     }
 
     /// check if this object is of type T
@@ -61,7 +60,7 @@ impl UnsafeObject {
         T: 'static,
     {
         let tid = TypeId::of::<T>();
-        return &tid == &self.type_id;
+        &tid == &self.type_id
     }
     /// if this object is of type T, will return the reference of T
     /// otherwise will return None
@@ -71,7 +70,7 @@ impl UnsafeObject {
         T: 'static,
     {
         if self.is::<T>() {
-            let ptr: NonNull<T> = addr_to_ptr::<T>(self.addr.as_ref().take().unwrap().clone());
+            let ptr: NonNull<T> = addr_to_ptr::<T>(*self.addr.as_ref().unwrap());
             // 指针转换为引用
             let inner = &*ptr.as_ptr();
             Some(inner)
@@ -87,7 +86,7 @@ impl UnsafeObject {
         T: 'static,
     {
         if self.is::<T>() {
-            let ptr: NonNull<T> = addr_to_ptr::<T>(self.addr.as_ref().take().unwrap().clone());
+            let ptr: NonNull<T> = addr_to_ptr::<T>(*self.addr.as_ref().unwrap());
             // 指针转换为引用
             let inner = &mut *ptr.as_ptr();
             Some(inner)
@@ -107,11 +106,11 @@ impl Drop for UnsafeObject {
 /// a object stored in Bump
 pub struct BumpObject {
     inner: UnsafeObject,
-    bump_ref: BumpRef,
+    _bump_ref: BumpRef,
 }
 impl BumpObject {
     pub fn new(inner: UnsafeObject, bump_ref: BumpRef) -> Self {
-        return Self { inner, bump_ref };
+        Self { inner, _bump_ref:bump_ref }
     }
 }
 
@@ -134,7 +133,7 @@ impl BumpAny for BumpObject {
         T: 'static,
     {
         let tid = TypeId::of::<T>();
-        return &tid == &self.inner.type_id;
+        &tid == &self.inner.type_id
     }
 
     fn downcast_ref<T>(&self) -> Option<&T>
@@ -154,7 +153,7 @@ impl BumpAny for BumpObject {
 
 #[cfg(test)]
 mod test {
-    use crate::util::{check_send, check_sync};
+    use crate::util::check_send;
 
     use super::UnsafeObject;
 

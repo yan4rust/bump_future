@@ -13,28 +13,26 @@ pub struct PoolConfig {
 
 pub struct BumpPool {
     pool: Arc<ArrayQueue<Bump>>,
-    pool_capacity: usize,
     bump_capacity: usize,
 }
 impl BumpPool {
     pub fn new(pool_capacity: usize, bump_capacity: usize) -> Self {
         let pool = ArrayQueue::new(pool_capacity);
         for _idx in 0..pool_capacity {
-            pool.push(Bump::with_capacity(bump_capacity));
+            let _ = pool.push(Bump::with_capacity(bump_capacity));
         }
-        return Self {
+        Self {
             pool: Arc::new(pool),
-            pool_capacity,
             bump_capacity,
-        };
+        }
     }
     /// pool cappacity
     pub fn capacity(&self) -> usize {
-        return self.pool.capacity();
+        self.pool.capacity()
     }
     /// how many Bump instance in pool
     pub fn len(&self) -> usize {
-        return self.pool.len();
+        self.pool.len()
     }
 }
 impl BumpPool {
@@ -50,9 +48,9 @@ impl BumpPool {
             .pop()
             .or_else(|| Some(Bump::with_capacity(self.bump_capacity)))
             .unwrap();
-        return RecycleableBump {
+        RecycleableBump {
             bump: Some(bump),
             pool,
-        };
+        }
     }
 }

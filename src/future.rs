@@ -19,21 +19,21 @@ impl<O> BumpFuture<O> {
         inner: BumpObject,
         poll_fn: fn(this: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<O>,
     ) -> Self {
-        return Self {
+        Self {
             inner,
             poll_fn,
-            _p: PhantomData::default(),
-        };
+            _p: PhantomData,
+        }
     }
 }
 impl<O> AsRef<BumpObject> for BumpFuture<O> {
     fn as_ref(&self) -> &BumpObject {
-        return &self.inner;
+        &self.inner
     }
 }
 impl<O> AsMut<BumpObject> for BumpFuture<O> {
     fn as_mut(&mut self) -> &mut BumpObject {
-        return &mut self.inner;
+        &mut self.inner
     }
 }
 impl<O> Future for BumpFuture<O> {
@@ -43,7 +43,7 @@ impl<O> Future for BumpFuture<O> {
         self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
-        return (self.poll_fn)(self, cx);
+        (self.poll_fn)(self, cx)
     }
 }
 
@@ -63,13 +63,13 @@ where
     {
         let obj = alloc.alloc(self);
         let poll_fn = poll_future::<BumpFuture<O>, F>;
-        return BumpFuture::new(obj, poll_fn);
+        BumpFuture::new(obj, poll_fn)
     }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::util::{check_send, check_sync, check_unpin};
+    use crate::util::{check_send, check_unpin};
 
     use super::BumpFuture;
 

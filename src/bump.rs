@@ -2,12 +2,8 @@ use std::{ops::Deref, sync::Weak};
 
 use bumpalo::Bump;
 use crossbeam_queue::ArrayQueue;
-use tokio::{runtime::Handle, sync::mpsc};
+use tokio::sync::mpsc;
 
-use crate::{
-    alloc::BumpAlloc,
-    obj::{BumpObject, UnsafeObject},
-};
 
 pub mod pool;
 
@@ -18,15 +14,21 @@ pub struct BumpRefMgr {
     rx: mpsc::Receiver<()>,
     tx: mpsc::Sender<()>,
 }
+impl Default for BumpRefMgr {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BumpRefMgr {
     pub fn new() -> Self {
         let (tx, rx) = mpsc::channel(1);
-        return Self { rx, tx };
+        Self { rx, tx }
     }
     pub fn new_ref(&self) -> BumpRef {
-        return BumpRef {
-            tx: self.tx.clone(),
-        };
+        BumpRef {
+            _tx: self.tx.clone(),
+        }
     }
     /// when Future resolved,it means all BumpRef dropped,
     pub async fn wait_no_ref(mut self) {
@@ -38,7 +40,7 @@ impl BumpRefMgr {
 /// Bump usage reference object
 /// any object stored in Bump must hold a BumpRef to prevent the Bump from released
 pub struct BumpRef {
-    tx: mpsc::Sender<()>,
+    _tx: mpsc::Sender<()>,
 }
 
 /// when dropped,Bump instance will be reset and send back to pool
@@ -58,7 +60,7 @@ impl Drop for RecycleableBump {
         let mut bump = self.bump.take().expect("should not be None");
         bump.reset();
         if let Some(pool) = self.pool.upgrade() {
-            pool.push(bump);
+            let _ = pool.push(bump);
         }
     }
 }

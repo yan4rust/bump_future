@@ -48,16 +48,16 @@ where
 {
     unsafe {
         let ret = this.map_unchecked_mut(|this| {
-            let mut obj = this.as_mut();
+            let obj = this.as_mut();
             let ret = obj.downcast_mut::<S>().expect("type mismatch");
-            return ret;
+            ret
         });
-        return ret;
+        ret
     }
 }
 
 // check a Future is Unpin,if not compile ,the Future is !Unpin
-pub(crate) fn check_unpin_ref<T>(fut: &T)
+pub(crate) fn check_unpin_ref<T>(_fut: &T)
 where
     T: Future + Unpin,
 {
