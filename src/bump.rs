@@ -4,10 +4,7 @@ use bumpalo::Bump;
 use crossbeam_queue::ArrayQueue;
 use tokio::sync::mpsc;
 
-
 pub mod pool;
-
-
 
 /// Bump usage reference manager
 pub struct BumpRefMgr {

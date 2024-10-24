@@ -1,7 +1,7 @@
 #![allow(warnings)]
 //! a sample hyper server used for benchmark test
 //! it seems that about 5%-10% improvements of Req/Sec when use BumpFuture
-//! test steps: 
+//! test steps:
 //! 1. cargo install rewrk --git https://github.com/ChillFish8/rewrk.git
 //! 2. cargo build --release --examples
 //! 3. start with BumpFuture, "nohup ./target/release/examples/hyper_server --bump >/dev/null 2>&1 &" or start with BoxFuture, "nohup ./target/release/examples/hyper_server >/dev/null 2>&1 &"
@@ -102,7 +102,6 @@ impl Service<Request<Incoming>> for BumpService {
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 struct Cli {
-
     // if use BumpFuture
     #[arg(short, long, default_value_t = false)]
     pub bump: bool,

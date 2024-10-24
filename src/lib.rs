@@ -20,7 +20,6 @@ pub(crate) mod util;
 
 pub mod tokio {
     pub use tokio::*;
-    
 }
 pub mod once_cell {
     pub use once_cell::*;
@@ -118,7 +117,7 @@ macro_rules! alloc_mod {
 
 #[cfg(test)]
 mod test {
-    
+
     use std::time::Duration;
 
     use tokio::io::copy;
@@ -126,7 +125,6 @@ mod test {
     use crate::alloc_mod;
     use crate::bump::pool::PoolConfig;
     use crate::future::BumpFutureExt;
-    
 
     // generate a mod of name "bump_alloc"
     alloc_mod!(bump_alloc);
@@ -152,14 +150,13 @@ mod test {
         {
             let fut = bump_alloc::set_bump(async move {
                 let fut = bump_alloc::with_task(|alloc| {
-                    
                     async move {
                         tokio::time::sleep(Duration::from_millis(100)).await;
                         32_u32
                     }
                     .bumped(alloc)
                 });
-                
+
                 fut.unwrap().await
             });
             // after first use , pool len should be 7
@@ -175,14 +172,13 @@ mod test {
         {
             let fut = bump_alloc::set_bump(async move {
                 let fut = bump_alloc::with_task(|alloc| {
-                    
                     async move {
                         tokio::time::sleep(Duration::from_millis(100)).await;
                         32_u32
                     }
                     .bumped(alloc)
                 });
-                
+
                 fut.unwrap().await
             });
             // after first use , pool len should be 7
@@ -231,11 +227,8 @@ mod test {
         // check_unpin(&fut1);
 
         let fut = bump_alloc::set_bump(async move {
-            let fut = bump_alloc::with_task(|alloc| {
-                
-                fut1.bumped(alloc)
-            });
-            
+            let fut = bump_alloc::with_task(|alloc| fut1.bumped(alloc));
+
             fut.unwrap().await
         });
         let rslt = fut.await;

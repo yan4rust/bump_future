@@ -32,7 +32,8 @@ pub struct UnsafeObject {
     _p: PhantomData<Cell<()>>,
 }
 impl UnsafeObject {
-    /// the safety depends on Bump not reset or droped while this object is still live
+    /// # Safety
+    /// the safety depends on Bump used to create this object not reset or droped while this object is still live
     pub unsafe fn new<T>(bump: &Bump, inner: T) -> Self
     where
         T: Send + 'static,
@@ -60,8 +61,10 @@ impl UnsafeObject {
         T: 'static,
     {
         let tid = TypeId::of::<T>();
-        &tid == &self.type_id
+        tid == self.type_id
     }
+    /// # Safety
+    /// the safety depends on Bump used to create this object not reset or droped while this object is still live
     /// if this object is of type T, will return the reference of T
     /// otherwise will return None
     #[inline]
@@ -71,13 +74,14 @@ impl UnsafeObject {
     {
         if self.is::<T>() {
             let ptr: NonNull<T> = addr_to_ptr::<T>(*self.addr.as_ref().unwrap());
-            // 指针转换为引用
             let inner = &*ptr.as_ptr();
             Some(inner)
         } else {
             None
         }
     }
+    /// # Safety
+    /// the safety depends on Bump used to create this object not reset or droped while this object is still live
     /// if this object is of type T, will return the mutable reference of T
     /// otherwise will return None
     #[inline]
@@ -110,7 +114,10 @@ pub struct BumpObject {
 }
 impl BumpObject {
     pub fn new(inner: UnsafeObject, bump_ref: BumpRef) -> Self {
-        Self { inner, _bump_ref:bump_ref }
+        Self {
+            inner,
+            _bump_ref: bump_ref,
+        }
     }
 }
 
@@ -132,8 +139,7 @@ impl BumpAny for BumpObject {
     where
         T: 'static,
     {
-        let tid = TypeId::of::<T>();
-        &tid == &self.inner.type_id
+        self.inner.is::<T>()
     }
 
     fn downcast_ref<T>(&self) -> Option<&T>

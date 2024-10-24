@@ -34,6 +34,9 @@ impl BumpPool {
     pub fn len(&self) -> usize {
         self.pool.len()
     }
+    pub fn is_empty(&self) -> bool {
+        self.pool.is_empty()
+    }
 }
 impl BumpPool {
     /// take a Bump instance from pool,and return RecycleableBump
