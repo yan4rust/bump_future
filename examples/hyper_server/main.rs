@@ -1,4 +1,11 @@
 #![allow(warnings)]
+//! a sample hyper server used for benchmark test
+//! it seems that about 5%-10% improvements of Req/Sec when use BumpFuture
+//! test steps: 
+//! 1. cargo install rewrk --git https://github.com/ChillFish8/rewrk.git
+//! 2. cargo build --release --examples
+//! 3. start with BumpFuture, "nohup ./target/release/examples/hyper_server --bump >/dev/null 2>&1 &" or start with BoxFuture, "nohup ./target/release/examples/hyper_server >/dev/null 2>&1 &"
+//! 4. run rewrk , "rewrk -c 256 -t 2 -d 20s -h http://127.0.0.1:3000"
 
 use std::convert::Infallible;
 use std::future::Future;
@@ -103,9 +110,9 @@ struct Cli {
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    // pre allocate 10M memory for BumFuture use
+    // pre allocate memory for BumFuture use
     let conf = PoolConfig {
-        pool_capacity: 1024 * 10,
+        pool_capacity: 1024 * 100,
         bump_capacity: 1024,
     };
     bump_alloc::init(conf).unwrap();

@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![allow(warnings)]
+// #![allow(warnings)]
 #![allow(unstable_name_collisions)]
 pub mod alloc;
 pub mod bump;
@@ -20,6 +20,7 @@ pub(crate) mod util;
 
 pub mod tokio {
     pub use tokio::*;
+    
 }
 pub mod once_cell {
     pub use once_cell::*;
@@ -48,7 +49,9 @@ macro_rules! alloc_mod {
             };
             static POOL_CONFIG: OnceCell<PoolConfig> = OnceCell::new();
             static POOL: Lazy<BumpPool> = Lazy::new(|| {
-                let conf = POOL_CONFIG.get().expect("should init first");
+                let conf = POOL_CONFIG.get();
+                assert!(conf.is_some(),"mod '{}' not init yet",stringify!($name));
+                let conf = conf.unwrap();
                 BumpPool::new(conf.pool_capacity, conf.bump_capacity)
             });
             task_local! {
@@ -123,21 +126,22 @@ mod test {
 
     use tokio::io::copy;
 
+    use crate::alloc_mod;
+    use crate::bump::pool::PoolConfig;
     use crate::future::BumpFutureExt;
     use crate::util::check_unpin_ref;
-    use crate::{bump::pool::PoolConfig};
-    use crate::alloc_mod;
 
     // generate a mod of name "bump_alloc"
     alloc_mod!(bump_alloc);
 
     #[tokio::test]
     async fn test_bump_future() {
+        let x = std::f64::consts::PI;
         let conf = PoolConfig {
             pool_capacity: 8,
             bump_capacity: 1024,
         };
-        let _ = bump_alloc::init(conf);
+        // let _ = bump_alloc::init(conf);
         //after init ,pool len should be 8
         assert_eq!(bump_alloc::pool().len(), 8);
 
