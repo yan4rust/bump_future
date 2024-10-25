@@ -2,6 +2,7 @@
 name = "bump_future"
 version = "0.1.0"
 edition = "2021"
+authors = ["yan4rust <yan4rust@gmail.com>"]
 
 [dependencies]
 bumpalo = "3.16.0"
