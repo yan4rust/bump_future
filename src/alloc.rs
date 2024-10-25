@@ -1,3 +1,4 @@
+//! [`BumpAlloc`] trait and implemention [`TokioBumpAlloc`]
 use bumpalo::Bump;
 use tokio::runtime::Handle;
 
@@ -14,17 +15,17 @@ pub trait BumpAlloc {
         T: Send + 'static;
 }
 
-/// alloc object in bump within async task
+/// Allocate object in Bump within async task
 /// when dropped ,it will spawn a task to wait all BumpRef dropped.
 /// when all BumpRef dropped,it will drop RecycleableBump,and the Bump will be
-/// reset and push back to pool
-pub struct TaskBumpAlloc {
+/// reset and release back to pool
+pub struct TokioBumpAlloc {
     handle: Handle,
     bump: Option<RecycleableBump>,
     ref_mgr: Option<BumpRefMgr>,
 }
 
-impl TaskBumpAlloc {
+impl TokioBumpAlloc {
     pub fn new(handle: Handle, bump: RecycleableBump) -> Self {
         Self {
             handle,
@@ -41,7 +42,7 @@ impl TaskBumpAlloc {
         self.ref_mgr.as_ref().unwrap().new_ref()
     }
 }
-impl BumpAlloc for TaskBumpAlloc {
+impl BumpAlloc for TokioBumpAlloc {
     fn alloc<T>(&self, val: T) -> crate::obj::BumpObject
     where
         T: Send + 'static,
@@ -51,7 +52,7 @@ impl BumpAlloc for TaskBumpAlloc {
         BumpObject::new(inner, bump_ref)
     }
 }
-impl Drop for TaskBumpAlloc {
+impl Drop for TokioBumpAlloc {
     fn drop(&mut self) {
         let bump = self.bump.take().expect("should not be None");
         let ref_mgr = self.ref_mgr.take().expect("should not be None");

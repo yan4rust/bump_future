@@ -1,3 +1,5 @@
+//! [`BumpFuture<O>`] type
+//!
 use std::{
     future::Future,
     marker::PhantomData,
@@ -7,7 +9,7 @@ use std::{
 
 use crate::{alloc::BumpAlloc, obj::BumpObject, util::poll_future};
 
-/// a type erased Future,stored in Bump
+/// Type erased Future,stored in Bump
 pub struct BumpFuture<O> {
     inner: BumpObject,
     poll_fn: fn(this: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<O>,
@@ -47,6 +49,7 @@ impl<O> Future for BumpFuture<O> {
     }
 }
 
+/// Future extension trait for convert type impl Future into BumpFuture
 pub trait BumpFutureExt<O> {
     /// take a BumpAlloc impl reference as input,and will convert self into BumpFuture
     fn bumped<T>(self, alloc: &T) -> BumpFuture<O>

@@ -1,3 +1,5 @@
+//! [Bump](https://docs.rs/bumpalo/latest/bumpalo/struct.Bump.html) instance management
+//!
 use std::{ops::Deref, sync::Weak};
 
 use bumpalo::Bump;
@@ -35,12 +37,12 @@ impl BumpRefMgr {
 }
 
 /// Bump usage reference object
-/// any object stored in Bump must hold a BumpRef to prevent the Bump from released
+/// any object stored in Bump must hold a BumpRef to prevent it from released
 pub struct BumpRef {
     _tx: mpsc::Sender<()>,
 }
 
-/// when dropped,Bump instance will be reset and send back to pool
+/// When dropped,Bump instance will be reset and release back to pool
 pub struct RecycleableBump {
     bump: Option<Bump>,
     pool: Weak<ArrayQueue<Bump>>,

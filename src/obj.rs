@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Type for object stored in [Bump](`bumpalo::Bump`)
+
 use bumpalo::Bump;
 use std::{
     alloc::Layout, any::TypeId, cell::Cell, marker::PhantomData, num::NonZeroUsize, ptr::NonNull,
@@ -22,8 +24,8 @@ use crate::{
     util::{addr_to_ptr, drop_by_addr},
 };
 
-/// a smart pointer point to object stored in Bump
-/// it use TypeId to check when downcast in runtime, so only 'static type can be used as input
+/// Smart pointer point to object stored in Bump
+/// It use TypeId to check when downcast in runtime, so only 'static type supported
 pub struct UnsafeObject {
     addr: Option<NonZeroUsize>,
     type_id: TypeId,
@@ -54,7 +56,7 @@ impl UnsafeObject {
         }
     }
 
-    /// check if this object is of type T
+    /// Check if this object is of type T
     #[inline]
     pub fn is<T>(&self) -> bool
     where
@@ -64,7 +66,7 @@ impl UnsafeObject {
         tid == self.type_id
     }
     /// # Safety
-    /// the safety depends on Bump used to create this object not reset or droped while this object is still live
+    /// The safety depends on Bump used to create this object not reset or droped while this object is still live
     /// if this object is of type T, will return the reference of T
     /// otherwise will return None
     #[inline]
@@ -81,7 +83,7 @@ impl UnsafeObject {
         }
     }
     /// # Safety
-    /// the safety depends on Bump used to create this object not reset or droped while this object is still live
+    /// The safety depends on Bump used to create this object not reset or droped while this object is still live
     /// if this object is of type T, will return the mutable reference of T
     /// otherwise will return None
     #[inline]
@@ -107,7 +109,8 @@ impl Drop for UnsafeObject {
     }
 }
 
-/// a object stored in Bump
+/// Object stored in Bump,it holds a BumpRef,so if this object is still alive,
+/// the Bump instance it is stored will not be set and release
 pub struct BumpObject {
     inner: UnsafeObject,
     _bump_ref: BumpRef,
@@ -121,7 +124,7 @@ impl BumpObject {
     }
 }
 
-/// like std Any, downcast BumpObject to concret type
+/// Like std Any, downcast BumpObject to concret type
 pub trait BumpAny {
     fn is<T>(&self) -> bool
     where

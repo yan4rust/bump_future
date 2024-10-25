@@ -5,12 +5,16 @@ use crossbeam_queue::ArrayQueue;
 
 use super::RecycleableBump;
 
+/// config for BumpPool
 #[derive(Debug, Clone)]
 pub struct PoolConfig {
+    /// Max instance count of pool
     pub pool_capacity: usize,
+    /// Capacity of Bump instance
     pub bump_capacity: usize,
 }
 
+/// Pool of Bump instance
 pub struct BumpPool {
     pool: Arc<ArrayQueue<Bump>>,
     bump_capacity: usize,
@@ -26,24 +30,24 @@ impl BumpPool {
             bump_capacity,
         }
     }
-    /// pool cappacity
+    /// Pool cappacity
     pub fn capacity(&self) -> usize {
         self.pool.capacity()
     }
-    /// how many Bump instance in pool
+    /// How many Bump instance in pool
     pub fn len(&self) -> usize {
         self.pool.len()
     }
+
     pub fn is_empty(&self) -> bool {
         self.pool.is_empty()
     }
 }
 impl BumpPool {
-    /// take a Bump instance from pool,and return RecycleableBump
-    /// when no Bump,it will create a new Bump instance。
-    /// when RecycleableBump dropped, it will reset Bump and push back into the pool
-    /// with the pool,we can resuse pre allocated memory in Bump instance
-    /// and reduce the memory allocation system call
+    /// Take a Bump instance from pool,and return RecycleableBump
+    /// When no Bump instance in pool,it will create a new Bump instance。
+    /// When RecycleableBump dropped, it will reset Bump and release back into the pool
+    /// With the pool,we can resuse pre allocated memory in Bump instance and reduce the memory allocation syscall
     pub fn take(&self) -> RecycleableBump {
         let pool = Arc::downgrade(&self.pool);
         let bump = self
