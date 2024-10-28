@@ -7,7 +7,7 @@ description = "Type Erased Future Stored In Bump"
 homepage = "https://github.com/yan4rust/bump_future"
 repository="https://github.com/yan4rust/bump_future"
 readme = "README.md"
-exclude = ["/.github/*", "/benches", "/tests", "/.vscode", "/examples"]
+exclude = ["/.github/*", "/benches", "/tests", "/.vscode", "/examples","Cargo.lock"]
 authors = ["yan4rust <yan4rust@gmail.com>"]
 
 [dependencies]
