@@ -2,6 +2,11 @@
 name = "bump_future"
 version = "0.1.0"
 edition = "2021"
+license = "Apache License 2.0"
+description = "Type Erased Future Stored In Bump"
+homepage = "https://github.com/yan4rust/bump_future"
+repository="https://github.com/yan4rust/bump_future"
+readme = "README.md"
 authors = ["yan4rust <yan4rust@gmail.com>"]
 
 [dependencies]

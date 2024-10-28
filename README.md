@@ -14,11 +14,11 @@ It seems that about 5%-10% improvements of Req/Sec when use [BumpFuture].
 
 # Examples
 ```
-/use bump_future::bump::pool::PoolConfig;
-/use bump_future::future::BumpFutureExt;
-/use bump_future::alloc_mod;
-/use bump_future::tokio;
-/use std::time::Duration;
+use bump_future::bump::pool::PoolConfig;
+use bump_future::future::BumpFutureExt;
+use bump_future::alloc_mod;
+use bump_future::tokio;
+use std::time::Duration;
 
 alloc_mod!(bump_alloc);
 

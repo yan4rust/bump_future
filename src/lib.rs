@@ -24,6 +24,8 @@
 //!
 //! It seems that about 5%-10% improvements of Req/Sec when use [BumpFuture](`crate::future::BumpFuture`).
 //!
+//! This is inspired by [StackFuture](https://github.com/microsoft/stackfuture). The limit of it is that can not use StackFuture inside another StackFuture.
+//!
 //! # Examples
 //! ```
 //! use bump_future::bump::pool::PoolConfig;
